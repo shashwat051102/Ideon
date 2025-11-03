@@ -1,0 +1,63 @@
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.build/
+build/
+dist/
+.eggs/
+*.egg-info/
+.venv/
+venv/
+ENV/
+.env
+.env.*
+.pdm.toml
+
+# Test/coverage caches
+.pytest_cache/
+.coverage
+.coverage.*
+hmlcov/
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.pyre/
+.pytype/
+
+# IDE/editor
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Local data stores (persisted at runtime)
+storage/sqlite/*.db
+storage/sqlite/*.sqlite
+storage/sqlite/*.sqlite3
+storage/sqlite/*-journal
+storage/sqlite/*-wal
+storage/sqlite/*-shm
+storage/chromadb/
+storage/chroma_db/
+
+# Exports and temp outputs
+data/exports/
+output/
+
+# Notebooks
+.ipynb_checkpoints/
+notebooks/
+
+# Frontend artifacts (if ever generated)
+node_modules/
+*.map
+
+# OS-specific
+Icon?

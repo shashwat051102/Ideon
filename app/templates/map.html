@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+	<h1 class="h5 m-0">Idea map</h1>
+	<div class="btn-group" role="group" aria-label="Autolink presets">
+		<button class="btn btn-sm btn-outline-primary" id="btn-autolink" data-preset="standard">Autolink</button>
+		<button class="btn btn-sm btn-outline-secondary" id="btn-autolink-loose" data-preset="loose">Loose</button>
+		<button class="btn btn-sm btn-outline-secondary" id="btn-autolink-strict" data-preset="strict">Strict</button>
+	</div>
+	<button class="btn btn-sm btn-success" id="btn-collective" style="display:none;">Create Collective Idea</button>
+	<button class="btn btn-sm btn-outline-danger" id="btn-reset">Reset</button>
+	<span class="text-muted small" id="status"></span>
+	<span class="ms-auto small text-muted" id="counts"></span>
+	</div>
+<div id="cy" style="width: 100%; height: 600px; background: #fff; border: 1px solid #ddd;"></div>
+
+<script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+<script>
+	const statusEl = document.getElementById('status');
+	const countsEl = document.getElementById('counts');
+	const info = document.createElement('div');
+	info.id = 'map-info';
+	info.className = 'mt-2';
+	info.innerHTML = '';
+	document.getElementById('cy').insertAdjacentElement('afterend', info);
+
+		const cy = cytoscape({
+		container: document.getElementById('cy'),
+		elements: [],
+		style: [
+				{ selector: 'node', style: { 'label': 'data(label)', 'background-color': '#1976d2', 'color': '#000', 'font-size': 10, 'text-wrap': 'wrap', 'text-max-width': 120 } },
+			{ selector: 'node[is_cluster]', style: { 'shape': 'round-rectangle', 'background-color': '#6a1b9a' } },
+			{ selector: 'edge', style: { 'width': 2, 'line-color': '#bbb', 'curve-style': 'bezier', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#bbb' } },
+		],
+		layout: { name: 'cose', animate: false }
+	});
+
+	async function refresh() {
+		const r = await fetch('/api/graph');
+		const data = await r.json();
+		cy.elements().remove();
+		cy.add(data.elements);
+			cy.layout({ name: 'cose', animate: false }).run();
+			countsEl.textContent = `${data.counts.nodes} nodes • ${data.counts.edges} edges`;
+			// Show collective button if we have edges
+			const collectiveBtn = document.getElementById('btn-collective');
+			if (data.counts.edges > 0) {
+				collectiveBtn.style.display = 'inline-block';
+			} else {
+				collectiveBtn.style.display = 'none';
+			}
+			cy.off('tap');
+			cy.on('tap', 'edge', function(evt){
+				const e = evt.target; const d = e.data();
+				info.innerHTML = `<span class=kv><strong>Edge</strong> ${d.source} → ${d.target}</span>` +
+												 ` <span class=kv>dist: ${d.distance !== undefined && d.distance !== null ? Number(d.distance).toFixed(3) : '–'}</span>` +
+												 ` <span class=kv>tag overlap: ${d.tag_overlap ?? '–'}</span>`;
+			});
+			cy.on('tap', 'node', function(evt){
+				const n = evt.target;
+				collectiveBtn.dataset.seedId = n.id();
+				info.innerHTML = `<span class=kv><strong>Selected node</strong> ${n.data('label')} (${n.id()})</span>`;
+			});
+	}
+
+	function presetParams(kind){
+	// Distances from Chroma use L2 on embeddings; allow larger thresholds when sentence-transformers
+	// isn't available or embeddings are unnormalized. Cosine thresholds help cut unrelated links.
+	// "strict" also requires mutual-nearest to further reduce false positives.
+	if (kind === 'loose') return {
+		top_k: 8,
+		max_distance: 1.8,
+		require_tag_overlap: false,
+		min_tag_overlap: 0,
+		close_override_distance: 0.6,
+		min_cosine: 0.25,
+		require_mutual: false
+	};
+	if (kind === 'strict') return {
+		top_k: 5,
+		max_distance: 0.95,
+		require_tag_overlap: false,
+		min_tag_overlap: 0,
+		close_override_distance: 0.35,
+		min_cosine: 0.6,
+		require_mutual: true
+	};
+	return {
+		top_k: 5,
+		max_distance: 1.2,
+		require_tag_overlap: false,
+		min_tag_overlap: 0,
+		close_override_distance: 0.45,
+		min_cosine: 0.45,
+		require_mutual: false
+	};
+	}
+
+	async function runAutolink(kind){
+		statusEl.textContent = 'Autolinking…';
+		try {
+			const r = await fetch('/api/graph/autolink', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(presetParams(kind))
+			});
+			const data = await r.json();
+			if (data.error) {
+				statusEl.textContent = `Error: ${data.error}`;
+			} else if (data.message && (data.created === 0 || data.created === undefined)) {
+				statusEl.textContent = data.message;
+			} else {
+				statusEl.textContent = `Created ${data.created || 0} edges`;
+			}
+		} catch (e) {
+			console.error('Autolink failed', e);
+			statusEl.textContent = `Error autolinking${e && e.message ? ': ' + e.message : ''}`;
+		}
+		await refresh();
+	}
+
+	document.getElementById('btn-autolink').addEventListener('click', () => runAutolink('standard'));
+	document.getElementById('btn-autolink-loose').addEventListener('click', () => runAutolink('loose'));
+	document.getElementById('btn-autolink-strict').addEventListener('click', () => runAutolink('strict'));
+
+	document.getElementById('btn-collective').addEventListener('click', async () => {
+			const seedId = document.getElementById('btn-collective').dataset.seedId;
+			statusEl.textContent = 'Synthesizing collective idea…';
+		try {
+					const r = await fetch('/api/graph/collective', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ seed_id: seedId || null })
+			});
+			const data = await r.json();
+			if (data.error) {
+				statusEl.textContent = `Error: ${data.error}`;
+			} else {
+				// Display synthesis result in info panel
+				const tags = Array.isArray(data.tags) ? data.tags.join(', ') : data.tags;
+				const sources = Array.isArray(data.source_nodes) ? data.source_nodes.join(', ') : '';
+				info.innerHTML = `<div style="padding:1rem; background:#f8f9fa; border-radius:4px; margin-top:0.5rem;">
+					<h5 style="margin:0 0 0.5rem 0; color:#1976d2;">💡 Collective Idea</h5>
+					<h6 style="margin:0 0 0.5rem 0;">${data.title}</h6>
+					<p style="white-space:pre-wrap; margin:0 0 0.5rem 0; max-height:400px; overflow-y:auto;">${data.content}</p>
+					<div style="font-size:0.85rem; color:#666;">
+						<strong>Tags:</strong> ${tags}<br>
+						<strong>Sources:</strong> ${sources}
+					</div>
+				</div>`;
+				statusEl.textContent = `Collective idea synthesized`;
+			}
+		} catch (e) {
+			console.error('Collective synthesis failed', e);
+			statusEl.textContent = `Error synthesizing collective idea${e && e.message ? ': ' + e.message : ''}`;
+		}
+	});
+
+	document.getElementById('btn-reset').addEventListener('click', async () => {
+		if (!confirm('Reset ideas and graph?')) return;
+		statusEl.textContent = 'Resetting…';
+		try {
+			const r = await fetch('/api/graph/reset', { method: 'POST' });
+			const data = await r.json();
+			statusEl.textContent = data.message || 'Reset complete';
+		} catch (e) { statusEl.textContent = 'Error resetting'; }
+		await refresh();
+	});
+
+	refresh();
+</script>
+{% endblock %}
+

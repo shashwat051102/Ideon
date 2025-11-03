@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow-sm">
+	<div class="card-body">
+		<h1 class="h4 mb-3">Generate new ideas</h1>
+		<form method="post" action="{{ url_for('home.generate') }}">
+			<div class="mb-3">
+				<label class="form-label">Prompt</label>
+				<textarea class="form-control" name="prompt" rows="5" placeholder="What would you like to explore?"></textarea>
+			</div>
+			<div class="row g-3">
+				<div class="col-md-8">
+					<div class="alert alert-light border d-flex align-items-center" role="alert">
+						<div>
+							<strong>Generation settings:</strong>
+							<span class="ms-2">1 idea</span>
+							<span class="ms-2">• context top‑k: 3</span>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-4">
+					<label class="form-label">Tags (comma-separated)</label>
+					<input class="form-control" type="text" name="tags" placeholder="ai, creativity" />
+				</div>
+			</div>
+			<div class="mt-3">
+				<button class="btn btn-primary" type="submit">Generate</button>
+				<a class="btn btn-outline-secondary" href="/ideas">View history</a>
+				<a class="btn btn-outline-secondary" href="/map">Open map</a>
+			</div>
+		</form>
+		<script>
+		(function(){
+		  const form = document.querySelector(`form[action="{{ url_for('home.generate') }}"]`);
+		  if (!form) return;
+		  const btn = form.querySelector('button[type="submit"]');
+		  let submitting = false;
+		  form.addEventListener('submit', function(e){
+		    if (submitting) {
+		      e.preventDefault();
+		      return false;
+		    }
+		    submitting = true;
+		    if (btn) {
+		      btn.disabled = true;
+		      btn.dataset.orig = btn.innerHTML;
+		      btn.innerHTML = 'Generating…';
+		    }
+		  });
+		})();
+		</script>
+		<div class="mt-3 text-muted small">Tip: Set up your voice in the Voice tab for better stylistic matches.</div>
+	</div>
+	</div>
+{% endblock %}
+
+{% block extra_scripts %}{% endblock %}
+

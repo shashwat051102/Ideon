@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h4 mb-3">Voice profile</h1>
+{% if error %}
+	<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+{% if vp %}
+	<div class="alert alert-success mb-3">Active profile: <strong>{{ vp.profile_name or 'Default Voice' }}</strong></div>
+{% else %}
+	<div class="alert alert-info mb-3">No active profile yet. Create one to improve tone and style.</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('voice.voice_create') }}">
+	<div class="row g-3 align-items-end">
+		<div class="col-md-6">
+			<label class="form-label">Profile name</label>
+			<input type="text" class="form-control" name="profile_name" value="Default Voice" />
+		</div>
+		<div class="col-md-3">
+			<button class="btn btn-primary" type="submit">Create/Update</button>
+		</div>
+	</div>
+</form>
+{% endblock %}
+
