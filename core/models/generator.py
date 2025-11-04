@@ -234,5 +234,6 @@ def compose_from_nodes(
     resp = llm.invoke([SystemMessage(content=sys), HumanMessage(content=user)])
     text = _extract_text(resp)
     data = _safe_json_from_text(text, default_title="Synthesis", default_tags=["synthesis"]) 
-    out_tags = list(dict.fromkeys((extra_tags or []) + data.get("tags", [])))
+    # Ensure the 'llm' tag is present to make mode visible in UI/clients
+    out_tags = list(dict.fromkeys((extra_tags or []) + data.get("tags", []) + ["llm"]))
     return {"title": data.get("title"), "content": data.get("content"), "tags": out_tags}

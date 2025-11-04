@@ -1,5 +1,6 @@
 from __future__ import annotations
 from flask import Blueprint, render_template, jsonify, request
+import os
 import json
 from core.database.sqlite_manager import SQLiteManager
 from core.crews.graph_agent import GraphAgent
@@ -126,8 +127,11 @@ def api_graph_collective():
         prompt = payload.get("prompt") or "Synthesize these connected ideas into one coherent collective idea."
         top_k = int(payload.get("top_k", 5))
         autolink = bool(payload.get("autolink", True))
-        # allow clients to force require_llm, default False so we gracefully fall back to local synthesis
-        require_llm = bool(payload.get("require_llm", False))
+        # allow clients to force require_llm; env can set default to require LLM by default
+        env_require = str(
+            os.getenv("IDEON_COLLECTIVE_REQUIRE_LLM", os.getenv("IDEAWEAVER_COLLECTIVE_REQUIRE_LLM", "0"))
+        ).lower() in {"1", "true", "yes"}
+        require_llm = bool(payload.get("require_llm", env_require))
 
         agent = CollectiveIdeaAgent()
         data = agent.run(

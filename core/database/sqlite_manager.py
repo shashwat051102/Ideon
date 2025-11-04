@@ -124,6 +124,16 @@ class SQLiteManager:
             updated_at TEXT NOT NULL
         )""")
 
+        # Ensure voice_profiles columns (handle legacy 'active' vs canonical 'is_active')
+        self._ensure_table_columns(cur, "voice_profiles", {
+            "profile_name": "TEXT",
+            "is_active": "INTEGER NOT NULL DEFAULT 1",
+            "analysis_metrics": "TEXT",
+            "source_file_ids": "TEXT",
+            "created_at": "TEXT NOT NULL",
+            "updated_at": "TEXT NOT NULL",
+        })
+
         # Ensure expected columns exist (lightweight migrations)
         self._ensure_table_columns(cur, "idea_nodes", {
             "user_id": "TEXT",
@@ -163,7 +173,14 @@ class SQLiteManager:
         existing = {row[1] for row in cur.fetchall()}  # column names
         for name, decl in columns.items():
             if name not in existing:
-                cur.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+                try:
+                    cur.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+                except sqlite3.OperationalError as e:
+                    # Handle concurrent migrations or already-added columns gracefully
+                    if "duplicate column name" in str(e).lower():
+                        pass
+                    else:
+                        raise
 
     # Users
     def create_user(self, username: str, preferences: Optional[Dict[str, Any]] = None) -> str:
