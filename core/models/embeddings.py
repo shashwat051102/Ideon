@@ -27,7 +27,10 @@ class EmbeddingModel:
         self.available = False
 
         # Only attempt heavy import when user explicitly opts in
-        use_st = os.environ.get("IDEAWEAVER_USE_ST", "0").lower() in {"1", "true", "yes"}
+        use_st = os.environ.get(
+            "IDEON_USE_ST",
+            os.environ.get("IDEAWEAVER_USE_ST", "0"),
+        ).lower() in {"1", "true", "yes"}
         if use_st:
             global _HAS_ST, SentenceTransformer
             if SentenceTransformer is None:

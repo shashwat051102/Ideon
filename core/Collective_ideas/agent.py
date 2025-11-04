@@ -112,7 +112,7 @@ class CollectiveIdeaAgent:
 
         # Optionally enforce LLM requirement
         if require_llm and generator.get_llm() is None:
-            return {"error": "LLM is not configured. Set IDEAWEAVER_USE_LLM=true and OPENAI_API_KEY to use LLM synthesis."}
+            return {"error": "LLM is not configured. Set IDEON_USE_LLM=true (or legacy IDEAWEAVER_USE_LLM=true) and OPENAI_API_KEY to use LLM synthesis."}
 
         # Synthesize using generator (LLM if configured, local otherwise)
         try:

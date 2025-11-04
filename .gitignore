@@ -21,11 +21,15 @@ ENV/
 .coverage
 .coverage.*
 htmlcov/
+.coverage.xml
 .mypy_cache/
 .ruff_cache/
 .cache/
 .pyre/
 .pytype/
+.benchmarks/
+.tox/
+.nox/
 
 # IDE/editor
 .vscode/
@@ -33,6 +37,9 @@ htmlcov/
 *.code-workspace
 .DS_Store
 Thumbs.db
+.python-version
+.direnv/
+.envrc
 
 # Logs
 logs/
@@ -47,6 +54,9 @@ storage/sqlite/*-wal
 storage/sqlite/*-shm
 storage/chromadb/
 storage/chroma_db/
+
+# Root-level dev database (do not commit local runtime DB)
+/metadata.db
 
 # Keep folder markers
 !storage/sqlite/.gitkeep
@@ -63,6 +73,10 @@ notebooks/
 # Frontend artifacts (if ever generated)
 node_modules/
 *.map
+
+# Python packaging/cache variants
+__pypackages__/
+pip-wheel-metadata/
 
 # OS-specific
 Icon?

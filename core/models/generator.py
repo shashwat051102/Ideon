@@ -16,9 +16,11 @@ logger = logging.getLogger(__name__)
 if not logger.handlers:
     logging.basicConfig(level=logging.INFO)
 
-# Environment toggles
-USE_LLM = str(os.getenv("IDEAWEAVER_USE_LLM", "0")).lower() in {"1", "true", "yes"}
-LLM_MODEL = os.getenv("IDEAWEAVER_LLM_MODEL", "gpt-4.1-mini")
+# Environment toggles (support new IDEON_* and legacy IDEAWEAVER_* prefixes)
+USE_LLM = str(
+    os.getenv("IDEON_USE_LLM", os.getenv("IDEAWEAVER_USE_LLM", "0"))
+).lower() in {"1", "true", "yes"}
+LLM_MODEL = os.getenv("IDEON_LLM_MODEL", os.getenv("IDEAWEAVER_LLM_MODEL", "gpt-4.1-mini"))
 
 # Lazy LLM init
 _LLM = None

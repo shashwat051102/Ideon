@@ -1,0 +1,12 @@
+# Minimal runtime dependencies for Docker (faster builds)
+Flask>=3.0.0
+python-dotenv>=1.0.0
+chromadb>=0.5.5
+numpy>=1.26.0
+openai>=1.46.0
+langchain-openai>=0.1.7
+langchain-core>=0.2.0
+# CrewAI is optional and can be heavy; omit for runtime image
+crewai>=0.51.1
+# Production server
+gunicorn>=21.2.0

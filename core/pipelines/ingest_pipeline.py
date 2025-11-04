@@ -115,7 +115,7 @@ def ingest_directory(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="IdeaWeaver Ingest Pipeline")
+    parser = argparse.ArgumentParser(description="Ideon Ingest Pipeline")
     parser.add_argument("--root", default="data", help="Root data directory")
     parser.add_argument("--db", default="storage/sqlite/metadata.db", help="SQLite DB path")
     parser.add_argument(

@@ -31,8 +31,8 @@ def llm_status():
     # Probe LLM (will lazy-init if configured)
     llm = generator.get_llm()
     ready = llm is not None
-    use_llm = str(os.getenv("IDEAWEAVER_USE_LLM", "0")).lower() in {"1", "true", "yes"}
-    model = os.getenv("IDEAWEAVER_LLM_MODEL", "gpt-4.1-mini")
+    use_llm = str(os.getenv("IDEON_USE_LLM", os.getenv("IDEAWEAVER_USE_LLM", "0"))).lower() in {"1", "true", "yes"}
+    model = os.getenv("IDEON_LLM_MODEL", os.getenv("IDEAWEAVER_LLM_MODEL", "gpt-4.1-mini"))
     api_key = os.getenv("OPENAI_API_KEY") or ""
     base_url = os.getenv("OPENAI_BASE_URL") or None
     # Light masking for display

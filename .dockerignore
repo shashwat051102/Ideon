@@ -1,0 +1,17 @@
+.venv
+venv
+__pycache__/
+*.py[cod]
+build/
+dist/
+.eggs/
+*.egg-info/
+.git
+.gitignore
+.ipynb_checkpoints/
+.notebooks
+logs/
+data/
+output/
+storage/
+.env
