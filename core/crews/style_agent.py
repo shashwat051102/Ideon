@@ -31,31 +31,55 @@ class StyleLearnerAgent:
     def _collect_samples(self, max_files: int = 50, max_chars_per_file: int = 4000) -> Tuple[str, List[str]]:
         texts: List[str] = []
         file_ids: List[str] = []
+        # Preferred path: read any previously ingested writing samples from SQLite
         rows = self.db.get_source_files(category="writing_sample")
-        if not rows:
-            return "", []
-        for r in rows[:max_files]:
-            fid = r["file_id"]
-            combined = ""
-            try:
-                chunks = self.db.get_chunks_for_file(fid)
-            except Exception:
-                chunks = []
-            if chunks:
-                combined = "".join(c["content"] for c in chunks)
-            if not combined:
-                rel = r.get("filepath", "")
-                fpath = rel if os.path.isabs(rel) else os.path.join(os.getcwd(), rel)
-                if os.path.exists(fpath):
-                    try:
-                        with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
-                            combined = f.read()
-                    except Exception:
-                        combined = ""
-            if not combined.strip():
-                continue
-            texts.append(combined[:max_chars_per_file])
-            file_ids.append(fid)
+        if rows:
+            for r in rows[:max_files]:
+                fid = r.get("file_id") or r.get("filepath") or ""
+                combined = ""
+                try:
+                    chunks = self.db.get_chunks_for_file(r.get("file_id", ""))
+                except Exception:
+                    chunks = []
+                if chunks:
+                    combined = "".join(c.get("content", "") for c in chunks)
+                if not combined:
+                    rel = r.get("filepath", "")
+                    fpath = rel if os.path.isabs(rel) else os.path.join(os.getcwd(), rel)
+                    if os.path.exists(fpath):
+                        try:
+                            with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                                combined = f.read()
+                        except Exception:
+                            combined = ""
+                if not combined.strip():
+                    continue
+                texts.append(combined[:max_chars_per_file])
+                file_ids.append(fid)
+            return ("\n\n".join(texts), file_ids)
+
+        # Fallback: read directly from the repo's data/writing_samples when DB is empty (first-run environments)
+        samples_dir = os.path.join(os.getcwd(), "data", "writing_samples")
+        if os.path.isdir(samples_dir):
+            added = 0
+            for name in sorted(os.listdir(samples_dir)):
+                if added >= max_files:
+                    break
+                if not (name.endswith(".txt") or name.endswith(".md")):
+                    continue
+                fpath = os.path.join(samples_dir, name)
+                try:
+                    with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                        txt = f.read().strip()
+                except Exception:
+                    txt = ""
+                if not txt:
+                    continue
+                texts.append(txt[:max_chars_per_file])
+                # Use relative file path as an identifier placeholder (since no DB row exists yet)
+                rel = os.path.relpath(fpath).replace("\\", "/")
+                file_ids.append(rel)
+                added += 1
         return ("\n\n".join(texts), file_ids)
 
     def _build_embeddings(self, text: str) -> List[float]:

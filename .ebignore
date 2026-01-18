@@ -1,0 +1,12 @@
+Dockerrun.aws.json
+
+# Optionally exclude local artifacts
+.pytest_cache/
+logs/
+output/
+data/exports/
+storage/chromadb/
+storage/sqlite/*.db
+storage/sqlite/*-wal
+storage/sqlite/*-shm
+metadata.db

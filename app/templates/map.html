@@ -64,34 +64,34 @@
 	}
 
 	function presetParams(kind){
-	// Distances from Chroma use L2 on embeddings; allow larger thresholds when sentence-transformers
-	// isn't available or embeddings are unnormalized. Cosine thresholds help cut unrelated links.
-	// "strict" also requires mutual-nearest to further reduce false positives.
+	// Distances from Chroma are typically cosine distance (0..2, lower is closer).
+	// Tune presets to avoid "connect everything" while keeping useful links on small graphs.
 	if (kind === 'loose') return {
-		top_k: 8,
-		max_distance: 1.8,
+		top_k: 5,
+		max_distance: 0.9,
 		require_tag_overlap: false,
 		min_tag_overlap: 0,
-		close_override_distance: 0.6,
-		min_cosine: 0.25,
+		close_override_distance: 0.3,
+		min_cosine: 0.2,
 		require_mutual: false
 	};
 	if (kind === 'strict') return {
-		top_k: 5,
-		max_distance: 0.95,
+		top_k: 4,
+		max_distance: 0.55,
 		require_tag_overlap: false,
 		min_tag_overlap: 0,
-		close_override_distance: 0.35,
+		close_override_distance: 0.3,
 		min_cosine: 0.6,
 		require_mutual: true
 	};
+	// standard
 	return {
 		top_k: 5,
-		max_distance: 1.2,
+		max_distance: 0.7,
 		require_tag_overlap: false,
 		min_tag_overlap: 0,
-		close_override_distance: 0.45,
-		min_cosine: 0.45,
+		close_override_distance: 0.3,
+		min_cosine: 0.35,
 		require_mutual: false
 	};
 	}

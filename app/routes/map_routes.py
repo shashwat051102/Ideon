@@ -17,13 +17,24 @@ embedder = EmbeddingModel()
 
 @bp.route("/map")
 def map_view():
+    # Require login for map UI
+    token = request.cookies.get("vp_token")
+    if not token or not db.get_voice_profile_by_token(token):
+        from flask import redirect, url_for
+        return redirect(url_for("auth.login"))
     return render_template("map.html")
 
 
 @bp.route("/api/graph")
 def api_graph():
     limit = int(request.args.get("limit", 200))
-    nodes = db.list_idea_nodes(limit=limit)
+    # Scope strictly to voice profile using cookie token; no DB fallback
+    token = request.cookies.get("vp_token")
+    vp = db.get_voice_profile_by_token(token) if token else None
+    if not vp:
+        return jsonify({"elements": {"nodes": [], "edges": []}, "login_required": True})
+    user = db.get_user(vp.get("user_id")) if vp else None
+    nodes = db.list_idea_nodes(limit=limit, user_id=user["user_id"], voice_profile_id=vp.get("profile_id")) if user else []
     edges = db.list_all_edges(limit=1000)
 
     # Deduplicate edges by (src_id, dst_id, edge_type)
@@ -92,12 +103,33 @@ def api_graph_autolink():
     min_cosine = float(payload.get("min_cosine", 0.55))
     require_mutual = bool(payload.get("require_mutual", False))
     try:
-        # Require at least two ideas to produce any edges
-        current_nodes = db.list_idea_nodes(limit=2)
-        if len(current_nodes) < 2:
+        # Safety clamps: cosine distance typically in [0,2], but we restrict to [0,1] to avoid overlinking;
+        # cosine similarity in [-1,1], clamp requested threshold to [0,1].
+        if max_distance < 0:
+            max_distance = 0.0
+        if max_distance > 1.0:
+            max_distance = 1.0
+        if min_cosine < 0:
+            min_cosine = 0.0
+        if min_cosine > 1.0:
+            min_cosine = 1.0
+        # Require at least two ideas to produce any edges and choose a dynamic autolink batch size
+        # Scope autolink to active voice profile if present, using cookie token first
+        token = request.cookies.get("vp_token")
+        vp = db.get_voice_profile_by_token(token) if token else None
+        if not vp:
+            return jsonify({"created": 0, "detail": [], "login_required": True})
+        user = db.get_user(vp.get("user_id")) if vp else None
+        if not user:
+            return jsonify({"created": 0, "detail": [], "login_required": True})
+        current_nodes = db.list_idea_nodes(limit=10000, user_id=user["user_id"], voice_profile_id=vp.get("profile_id"))
+        total = len(current_nodes)
+        if total < 2:
             return jsonify({"created": 0, "detail": [], "message": "Need at least 2 ideas to autolink."})
+        # Link more nodes when we have a larger graph while keeping requests bounded
+        batch_limit = min(max(10, total), 200)
         res = gagent.autolink_recent(
-            limit=10,
+            limit=batch_limit,
             top_k=top_k,
             max_distance=max_distance,
             require_tag_overlap=require_tag_overlap,
@@ -105,6 +137,8 @@ def api_graph_autolink():
             close_override_distance=close_override_distance,
             min_cosine=min_cosine,
             require_mutual=require_mutual,
+            user_id=(user["user_id"] if user else None),
+            voice_profile_id=(vp.get("profile_id") if vp else None),
         )
         created = sum(len(x.get("created_edges", [])) for x in res)
         return jsonify({"created": created, "detail": res})
@@ -182,7 +216,13 @@ def api_graph_context_map():
     top_k = int(payload.get('top_k', 5))
     try:
         qemb = embedder.embed_text(text)
-        qr = chroma.query_ideas(query_embedding=qemb, n_results=top_k)
+        # Require voice token and restrict retrieval to that profile only
+        token = request.cookies.get("vp_token")
+        vp = db.get_voice_profile_by_token(token) if token else None
+        if not vp:
+            return jsonify({"results": [], "login_required": True})
+        where = {"voice_profile_id": {"$eq": vp.get("profile_id")}}
+        qr = chroma.query_ideas(query_embedding=qemb, n_results=top_k, where=where)
         ids = qr.get('ids') or []
         dists = qr.get('distances') or []
         docs = qr.get('documents') or []

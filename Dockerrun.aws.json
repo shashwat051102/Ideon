@@ -1,0 +1,23 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "shashwat051102/ideon:latest",
+    "Update": "true"
+  },
+  "Ports": [
+    { "ContainerPort": "5000" }
+  ],
+  "Volumes": [
+    { "HostDirectory": "/var/app/sqlite", "ContainerDirectory": "/app/storage/sqlite" },
+    { "HostDirectory": "/var/app/chromadb", "ContainerDirectory": "/app/storage/chromadb" }
+  ],
+  "Environment": [
+    { "Name": "IDEON_USE_LLM", "Value": "true" },
+    { "Name": "IDEON_COLLECTIVE_REQUIRE_LLM", "Value": "true" },
+    { "Name": "IDEON_LLM_MODEL", "Value": "gpt-4.1-mini" },
+    { "Name": "FLASK_ENV", "Value": "production" },
+    { "Name": "PYTHONUNBUFFERED", "Value": "1" },
+    { "Name": "PORT", "Value": "5000" }
+  ],
+  "Command": "gunicorn -w 1 -b 0.0.0.0:5000 run:app"
+}

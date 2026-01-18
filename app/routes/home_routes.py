@@ -1,5 +1,6 @@
 from __future__ import annotations
-from flask import Blueprint, request, render_template, jsonify, redirect, url_for
+from flask import Blueprint, request, render_template, jsonify, redirect, url_for, send_from_directory, current_app
+import os
 from core.database.sqlite_manager import SQLiteManager
 from core.crews.idea_agent import IdeaGeneratorAgent
 from core.models import generator
@@ -22,6 +23,15 @@ def index():
 @bp.route("/healthz")
 def healthz():
     return "ok", 200, {"Content-Type": "text/plain; charset=utf-8"}
+
+
+@bp.route('/favicon.ico')
+def favicon():
+    """Serve favicon if present; otherwise return 204 to avoid 500s in logs/health."""
+    try:
+        return send_from_directory(os.path.join(current_app.root_path, 'static'), 'favicon.ico')
+    except Exception:
+        return "", 204
 
 
 @bp.route("/api/llm/status")
@@ -60,7 +70,12 @@ def plain():
 
 @bp.route("/ideas")
 def ideas():
-    rows = db.list_idea_nodes(limit=100)
+    # Strictly scope to authenticated voice profile (redirect to login if missing)
+    tkn = request.cookies.get("vp_token")
+    vp = db.get_voice_profile_by_token(tkn) if tkn else None
+    if not vp:
+        return redirect(url_for("auth.login"))
+    rows = db.list_idea_nodes(limit=100, user_id=vp.get("user_id"), voice_profile_id=vp.get("profile_id"))
     return render_template("history.html", rows=rows)
 
 
@@ -73,9 +88,23 @@ def generate():
     n_ideas = DEFAULT_N_IDEAS
     ctx_top_k = DEFAULT_CTX_TOP_K
     tags = [t.strip() for t in (data.get("tags") or "").split(",") if t.strip()]
+    # Require voice token to generate ideas under a profile; set it active for the agent
+    tkn = request.cookies.get("vp_token")
+    vp = db.get_voice_profile_by_token(tkn) if tkn else None
+    if not vp:
+        msg = "Please sign in with your Voice ID first."
+        if request.is_json:
+            return jsonify({"error": msg}), 401
+        return redirect(url_for("voice.voice_view", error=msg))
+
     try:
         # Log for verification
         print(f"[generate] user={username} n_ideas={n_ideas} ctx_top_k={ctx_top_k} tags={tags}")
+        # Ensure the agent sees this profile as active for the user
+        try:
+            db.set_active_voice_profile(vp["profile_id"])  # agent uses 'active' lookup internally
+        except Exception:
+            pass
         res = agent.generate(username=username, prompt=prompt, n_ideas=n_ideas, ctx_top_k=ctx_top_k, tags=tags)
         print(f"[generate] created count={res.get('count')} ids={res.get('created_idea_ids')}")
         if request.is_json:

@@ -11,7 +11,10 @@ dist/
 .ipynb_checkpoints/
 .notebooks
 logs/
-data/
+# Include only writing samples from data; exclude everything else
+data/*
+!data/writing_samples/**
+!data/writing_samples
 output/
 storage/
 .env

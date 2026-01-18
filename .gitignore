@@ -80,3 +80,7 @@ pip-wheel-metadata/
 
 # OS-specific
 Icon?
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

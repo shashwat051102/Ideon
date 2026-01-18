@@ -6,7 +6,26 @@
 {% endif %}
 
 {% if vp %}
-	<div class="alert alert-success mb-3">Active profile: <strong>{{ vp.profile_name or 'Default Voice' }}</strong></div>
+	<div class="alert alert-success mb-3 d-flex align-items-center justify-content-between">
+		<div>
+			Active profile: <strong>{{ vp.profile_name or 'Default Voice' }}</strong>
+		</div>
+		<div class="ms-3">
+			<form method="post" action="{{ url_for('voice.voice_reset') }}" class="d-inline">
+				<button class="btn btn-sm btn-outline-light" type="submit" onclick="return confirm('Clear all ideas and links for this profile?')">Reset data</button>
+			</form>
+		</div>
+	</div>
+	<div class="card mb-3">
+		<div class="card-body">
+			<label class="form-label">Profile token</label>
+			<div class="input-group">
+				<input type="text" readonly class="form-control" value="{{ vp.auth_token }}" id="vpTokenInput">
+				<button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('vpTokenInput').value)">Copy</button>
+			</div>
+			<small class="text-muted">Use this token to sign in on another device via the form below.</small>
+		</div>
+	</div>
 {% else %}
 	<div class="alert alert-info mb-3">No active profile yet. Create one to improve tone and style.</div>
 {% endif %}
@@ -20,6 +39,38 @@
 		<div class="col-md-3">
 			<button class="btn btn-primary" type="submit">Create/Update</button>
 		</div>
+	</div>
+</form>
+
+<hr class="my-4" />
+
+<h2 class="h5">Switch profile</h2>
+{% if profiles and profiles|length > 0 %}
+<div class="list-group mb-3">
+	{% for p in profiles %}
+		<div class="list-group-item d-flex align-items-center justify-content-between">
+			<div>
+				<strong>{{ p.profile_name }}</strong>
+				{% if p.is_active %}<span class="badge text-bg-success ms-2">Active</span>{% endif %}
+			</div>
+			<form method="post" action="{{ url_for('voice.voice_activate', profile_id=p.profile_id) }}">
+				<button class="btn btn-sm btn-outline-primary" type="submit" {% if p.is_active %}disabled{% endif %}>Activate</button>
+			</form>
+		</div>
+	{% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No saved profiles yet.</p>
+{% endif %}
+
+<h2 class="h5">Sign in with token</h2>
+<form method="post" action="{{ url_for('voice.voice_login') }}" class="row g-3 align-items-end">
+	<div class="col-md-8">
+		<label class="form-label">Token</label>
+		<input type="text" class="form-control" name="token" placeholder="Paste token here" />
+	</div>
+	<div class="col-md-3">
+		<button class="btn btn-secondary" type="submit">Sign in</button>
 	</div>
 </form>
 {% endblock %}

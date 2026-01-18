@@ -274,3 +274,17 @@ class ChromaManager:
             self.ideas = self.client.get_or_create_collection("ideas", metadata={"desc": "Idea embeddings"})
         except Exception:
             pass
+
+    def delete_ideas_for_profile(self, voice_profile_id: str) -> None:
+        """Delete idea vectors for a specific voice_profile_id."""
+        if not voice_profile_id:
+            return
+        try:
+            self.ideas.delete(where={"voice_profile_id": str(voice_profile_id)})
+        except Exception as e:
+            self.logger.warning("[chroma] delete_ideas_for_profile error: %s; attempting re-init", e)
+            try:
+                self._init_collections()
+                self.ideas.delete(where={"voice_profile_id": str(voice_profile_id)})
+            except Exception as e2:
+                self.logger.error("[chroma] delete_ideas_for_profile failed after retry: %s", e2)
